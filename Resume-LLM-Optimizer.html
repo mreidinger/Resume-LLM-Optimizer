@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="AI-assisted resume prompt builder for tailoring resumes to job descriptions using large language models.">
+  <title>Resume LLM Optimizer</title>
+</head>
+<body>
+
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f0f11;
+    --surface: #1a1a1f;
+    --surface2: #23232a;
+    --border: #2e2e38;
+    --border2: #3d3d4d;
+    --text: #e8e8f0;
+    --text2: #9898b0;
+    --text3: #5a5a70;
+    --accent: #7c6af7;
+    --accent2: #a598ff;
+    --accent-bg: #1e1a3a;
+    --green: #3ecf8e;
+    --green-bg: #0d2a1e;
+    --amber: #f5a623;
+    --amber-bg: #2a1f0a;
+    --red: #f06292;
+  }
+
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f4f3ff;
+      --surface: #ffffff;
+      --surface2: #f0eff8;
+      --border: #dddcf0;
+      --border2: #c8c6e8;
+      --text: #1a1830;
+      --text2: #5e5c80;
+      --text3: #9896b8;
+      --accent: #5b4de0;
+      --accent2: #7c6af7;
+      --accent-bg: #ede9ff;
+      --green: #1a9c65;
+      --green-bg: #e6f7f0;
+      --amber: #c47d0a;
+      --amber-bg: #fff4df;
+      --red: #c0395e;
+    }
+  }
+
+  body, .wrap { background: var(--bg); }
+
+  .wrap {
+    padding: 1.5rem;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    max-width: 820px;
+    min-height: 100vh;
+    color: var(--text);
+  }
+
+  .header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 1.75rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .logo {
+    width: 36px; height: 36px;
+    background: var(--accent);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .logo svg { width: 18px; height: 18px; fill: white; }
+  .header-title { font-size: 16px; font-weight: 600; color: var(--text); }
+  .header-sub { font-size: 12px; color: var(--text2); margin-top: 2px; }
+
+  .steps {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+  }
+  .step {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 5px 14px 5px 6px;
+    font-size: 12px;
+    color: var(--text2);
+  }
+  .step-num {
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: var(--accent-bg);
+    color: var(--accent2);
+    font-size: 11px; font-weight: 600;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+  @media (max-width: 500px) { .row { grid-template-columns: 1fr; } }
+
+  .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+
+  label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .field-hint { font-size: 11px; color: var(--text3); margin-top: -3px; }
+
+  input[type=text], textarea {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 14px;
+    font-family: inherit;
+    color: var(--text);
+    width: 100%;
+    resize: vertical;
+    transition: border-color 0.15s;
+    outline: none;
+  }
+  input[type=text]:focus, textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(124,106,247,0.15);
+  }
+  input::placeholder, textarea::placeholder { color: var(--text3); }
+  textarea { min-height: 130px; line-height: 1.55; }
+
+  .tag-row { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
+  .field-tag {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .tag-required { background: var(--accent-bg); color: var(--accent2); }
+  .tag-jd { background: var(--green-bg); color: var(--green); }
+  .tag-resume { background: var(--amber-bg); color: var(--amber); }
+
+  .build-btn {
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 12px 24px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    width: 100%;
+    margin-top: 4px;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+  .build-btn:hover { opacity: 0.9; }
+  .build-btn:active { transform: scale(0.99); }
+
+  .divider { border: none; border-top: 1px solid var(--border); margin: 1.75rem 0; }
+
+  .output-area { display: none; }
+
+  .output-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .output-label { font-size: 14px; font-weight: 600; color: var(--text); }
+  .output-sub { font-size: 12px; color: var(--text2); margin-top: 2px; }
+
+  .agent-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+    align-items: center;
+  }
+  .agent-label { font-size: 11px; color: var(--text3); }
+  .agent-btn {
+    font-size: 12px;
+    font-weight: 500;
+    border: 1px solid var(--border2);
+    background: var(--surface2);
+    border-radius: 20px;
+    padding: 4px 14px;
+    cursor: pointer;
+    color: var(--text);
+    text-decoration: none;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .agent-btn:hover { border-color: var(--accent); background: var(--accent-bg); color: var(--accent2); }
+
+  .prompt-wrapper {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .prompt-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 14px;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+  }
+  .prompt-topbar-label { font-size: 11px; color: var(--text3); font-family: monospace; }
+  .copy-btn {
+    font-size: 12px;
+    font-weight: 500;
+    border: 1px solid var(--border2);
+    background: transparent;
+    border-radius: 6px;
+    padding: 4px 12px;
+    cursor: pointer;
+    color: var(--text2);
+    transition: all 0.15s;
+  }
+  .copy-btn:hover { border-color: var(--accent); color: var(--accent2); background: var(--accent-bg); }
+
+  .prompt-box {
+    padding: 1rem 1.25rem;
+    font-size: 12.5px;
+    line-height: 1.7;
+    color: var(--text2);
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 380px;
+    overflow-y: auto;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+  }
+  .prompt-box .inject { color: var(--accent2); font-weight: 600; }
+
+  .hint-box {
+    background: var(--green-bg);
+    border: 1px solid rgba(62,207,142,0.25);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 12px;
+    color: var(--green);
+    margin-top: 12px;
+  }
+
+  .char-count { font-size: 11px; color: var(--text3); text-align: right; margin-top: 4px; }
+</style>
+
+<div class="wrap">
+  <div class="header">
+    <div class="logo">
+      <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM8 13h8v1H8v-1zm0 3h8v1H8v-1zm0-6h3v1H8v-1z"/></svg>
+    </div>
+    <div>
+      <div class="header-title">Resume LLM Optimizer</div>
+      <div class="header-sub">Works with ChatGPT, Claude, Gemini, Copilot, Grok & more</div>
+    </div>
+  </div>
+
+  <div class="steps">
+    <div class="step"><div class="step-num">1</div>Fill in your details</div>
+    <div class="step"><div class="step-num">2</div>Click "Build prompt"</div>
+    <div class="step"><div class="step-num">3</div>Copy → paste into any AI</div>
+  </div>
+
+  <div class="row">
+    <div class="field">
+      <div class="tag-row"><span class="field-tag tag-required">Required</span></div>
+      <label>Your industry</label>
+      <input type="text" id="industry" placeholder="e.g. Fintech, Healthcare, SaaS" oninput="updateCount('industry','ic')" />
+    </div>
+    <div class="field">
+      <div class="tag-row"><span class="field-tag tag-required">Required</span></div>
+      <label>Role you're applying for</label>
+      <input type="text" id="role" placeholder="e.g. Senior Product Manager" oninput="updateCount('role','rc')" />
+    </div>
+  </div>
+
+  <div class="field">
+    <div class="tag-row">
+      <span class="field-tag tag-jd">Job description</span>
+    </div>
+    <label>Full job posting</label>
+    <textarea id="jd" placeholder="Paste the complete job description here — requirements, responsibilities, company info..." oninput="updateCount('jd','jc')"></textarea>
+    <div class="char-count" id="jc">0 chars</div>
+  </div>
+
+  <div class="field">
+    <div class="tag-row">
+      <span class="field-tag tag-resume">Your resume</span>
+    </div>
+    <label>Current resume text</label>
+    <textarea id="resume" placeholder="Paste all sections: summary, experience, education, skills, certifications..." oninput="updateCount('resume','recc')"></textarea>
+    <div class="char-count" id="recc">0 chars</div>
+  </div>
+
+  <button class="build-btn" onclick="buildPrompt()">Build prompt →</button>
+
+  <hr class="divider" />
+
+  <div class="output-area" id="outputArea">
+    <div class="output-header">
+      <div>
+        <div class="output-label">Your ready-to-paste prompt</div>
+        <div class="output-sub">Open any AI below, then paste</div>
+      </div>
+    </div>
+
+    <div class="agent-row">
+      <span class="agent-label">Open →</span>
+      <a class="agent-btn" href="https://chatgpt.com" target="_blank">ChatGPT</a>
+      <a class="agent-btn" href="https://claude.ai" target="_blank">Claude</a>
+      <a class="agent-btn" href="https://gemini.google.com" target="_blank">Gemini</a>
+      <a class="agent-btn" href="https://copilot.microsoft.com" target="_blank">Copilot</a>
+      <a class="agent-btn" href="https://grok.com" target="_blank">Grok</a>
+      <a class="agent-btn" href="https://www.perplexity.ai" target="_blank">Perplexity</a>
+    </div>
+
+    <div class="prompt-wrapper">
+      <div class="prompt-topbar">
+        <span class="prompt-topbar-label">prompt.txt</span>
+        <button class="copy-btn" id="copyBtn" onclick="copyPrompt()">Copy all</button>
+      </div>
+      <div class="prompt-box" id="promptBox"></div>
+    </div>
+
+    <div class="hint-box">Tip: for best results, use a model with a large context window. The prompt including your resume and job description can be 2,000–4,000+ tokens.</div>
+  </div>
+</div>
+
+<script>
+function updateCount(id, countId) {
+  const val = document.getElementById(id).value;
+  const el = document.getElementById(countId);
+  if (el) el.textContent = val.length.toLocaleString() + ' chars';
+}
+
+function buildPrompt() {
+  const industry = document.getElementById('industry').value.trim();
+  const role = document.getElementById('role').value.trim();
+  const jd = document.getElementById('jd').value.trim();
+  const resume = document.getElementById('resume').value.trim();
+
+  if (!industry || !role || !jd || !resume) {
+    alert('Please fill in all four fields before building the prompt.');
+    return;
+  }
+
+  const prompt = `Act as a senior hiring manager in ${industry} hiring for a ${role} position. You have deep experience evaluating candidates for this type of role and understand what makes a resume stand out in a competitive hiring process.
+
+Here is the job description:
+---
+${jd}
+---
+
+Here is my current resume:
+---
+${resume}
+---
+
+Your task is to:
+
+Step 1: Analyze the job description
+- Identify the most important must-have qualifications, preferred qualifications, technical skills, domain knowledge, and soft skills.
+- Extract the most important ATS keywords and phrases that appear to matter for this role.
+- Distinguish between what is truly essential versus what is merely nice to have.
+- Infer what the hiring manager is most likely trying to prioritize, even if the posting is written broadly.
+
+Step 2: Compare the job description to my resume
+- Evaluate how well my current resume matches the role.
+- Identify my strongest alignment points.
+- Identify any missing keywords, weak areas, underemphasized experience, or possible red flags.
+- Point out where my resume may be underselling relevant experience.
+
+Step 3: Refine my resume content
+- Rewrite my professional summary so it aligns strongly with the target role while remaining fully truthful.
+- Rewrite my experience bullet points to better match the position using stronger phrasing, clearer impact, and more relevant terminology.
+- Improve wording for ATS compatibility, clarity, and recruiter appeal without sounding exaggerated or fake.
+- Preserve accuracy. Do not invent experience, tools, certifications, or achievements that are not supported by my resume.
+
+Step 4: Provide strategic feedback
+- Recommend which experiences, projects, skills, and accomplishments should be emphasized most for this role.
+- Suggest anything that should be de-emphasized, removed, or condensed.
+- Note whether the resume appears more suited for a different level, such as mid-level, senior, lead, or architect.
+- Explain what would separate this resume from an average applicant versus a top-tier candidate for this position.
+
+Output format:
+1. Top job requirements
+2. Resume match assessment
+3. Missing or weak areas
+4. Rewritten professional summary
+5. Rewritten bullet points
+6. Strategic recommendations
+
+Keep the advice practical, specific, and grounded in real-world hiring. Focus on helping me produce a resume that is stronger, more targeted, and more competitive for this exact role.
+
+Please generate a new resume based on these criteria.`;
+
+  document.getElementById('promptBox').textContent = prompt;
+  document.getElementById('outputArea').style.display = 'block';
+  document.getElementById('outputArea').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function copyPrompt() {
+  const text = document.getElementById('promptBox').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('copyBtn');
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy all', 1800);
+  });
+}
+</script>
+
+</body>
+</html>
